@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sk-cli"
+version = "0.1.0"
+description = "Tamper-proof execution proofs for your scripts. Run anything, prove everything."
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "John David Taylor Preston"},
+]
+requires-python = ">=3.9"
+keywords = ["verification", "proof", "integrity", "ci", "devops", "audit"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Security",
+    "Programming Language :: Python :: 3",
+]
+
+[project.scripts]
+sk = "sk.cli:main"

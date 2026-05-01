@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+proof_*.json
+tampered_proof.json
+.eggs/
