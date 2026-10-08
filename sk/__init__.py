@@ -1,2 +1,2 @@
-"""SK — Verifiable Execution CLI. Tamper-proof execution proofs for your scripts."""
+"""SK — Verifiable Execution CLI. Tamper-evident execution evidence for your scripts."""
 __version__ = "0.1.0"
