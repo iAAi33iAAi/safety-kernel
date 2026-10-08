@@ -23,3 +23,7 @@ classifiers = [
 
 [project.scripts]
 sk = "sk.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["sk*"]
