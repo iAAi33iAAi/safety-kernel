@@ -1,8 +1,8 @@
 # SK — Verifiable Execution CLI
 
-**Tamper-proof execution proofs for your scripts.**
+**Tamper-evident execution proofs for your scripts.**
 
-Run anything. Prove everything. Detect tampering instantly.
+Run a script, record execution evidence, and verify the recorded artifacts for later tampering.
 
 ## Install
 
@@ -108,10 +108,10 @@ This is evidence transport, not execution authority: the adapter never accepts a
 
 ## Use cases
 
-- **CI/CD integrity** — prove your build ran exactly as claimed
-- **Audit trails** — tamper-proof execution records for compliance
+- **CI/CD integrity** — verify that recorded build evidence still matches the captured script/output artifacts
+- **Audit trails** — tamper-evident execution records for review and compliance workflows
 - **Reproducibility** — capture environment + output for debugging
-- **Supply chain security** — verify build artifacts weren't modified
+- **Supply chain security** — detect changes to the artifacts covered by the recorded proof
 
 ## Author
 
