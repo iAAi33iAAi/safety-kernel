@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "sk-cli"
 version = "0.1.0"
-description = "Tamper-proof execution proofs for your scripts. Run anything, prove everything."
+description = "Tamper-evident execution evidence for scripts; records and verifies covered artifacts."
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
