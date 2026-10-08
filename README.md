@@ -90,6 +90,12 @@ Each proof file contains:
 | `environment` | Python version, OS, architecture, hostname |
 | `proof_hash` | SHA-256 seal over the entire proof |
 
+## CAIOS interoperability
+
+The AETHEL interop adapter can expose a verified execution proof as a deterministic `caios-evidence/v1` envelope. The envelope identifies Safety Kernel as the evidence authority, binds the subject proof ID, records verification status/check counts, and carries a SHA-256 digest over the canonical evidence material.
+
+This is evidence transport, not execution authority: the adapter never accepts arbitrary code for execution over HTTP.
+
 ## Verification checks
 
 `sk verify` runs 5 integrity checks:
