@@ -16,4 +16,5 @@ jobs:
           python-version: "3.11"
       - run: python -m pip install --upgrade pip
       - run: pip install -e .
+      - run: pip install pytest
       - run: python -m pytest -q test_sk.py test_tamper.py
