@@ -19,6 +19,30 @@ VERSION = "0.1.0"
 def _hash_text(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
+
+def _canonical_json(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+
+
+def _evidence_envelope(request_id: str, proof: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
+    subject = str(proof.get("proof_id", "unknown"))
+    material = {
+        "schema": "caios-evidence/v1",
+        "authority": "safety-kernel",
+        "kind": "execution-proof",
+        "subject": subject,
+        "status": "PASS" if result["valid"] else "FAIL",
+        "checks": result["checks"],
+        "passed": result["passed"],
+        "errors": list(result["errors"]),
+        "warnings": list(result["warnings"]),
+    }
+    return {
+        **material,
+        "request_id": request_id,
+        "digest": _hash_text(_canonical_json(material)),
+    }
+
 def verify_proof_data(proof: dict[str, Any]) -> dict[str, Any]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -72,12 +96,19 @@ def evaluate(request_id: str, operation: str, payload: dict[str, Any]) -> dict[s
         if not isinstance(value, str):
             return {"protocol": PROTOCOL, "service": SERVICE, "version": VERSION, "request_id": request_id, "status": "FAIL", "decision": "INVALID_INPUT", "reasons": ["value must be a string"], "result": {}, "evidence": {}}
         return {"protocol": PROTOCOL, "service": SERVICE, "version": VERSION, "request_id": request_id, "status": "PASS", "decision": "HASHED", "reasons": [], "result": {"sha256": _hash_text(value)}, "evidence": {"execution": "not performed"}}
+    if operation == "proof-evidence":
+        proof = payload.get("proof")
+        if not isinstance(proof, dict):
+            return {"protocol": PROTOCOL, "service": SERVICE, "version": VERSION, "request_id": request_id, "status": "FAIL", "decision": "INVALID_INPUT", "reasons": ["proof must be an object"], "result": {}, "evidence": {}}
+        result = verify_proof_data(proof)
+        envelope = _evidence_envelope(request_id, proof, result)
+        return {"protocol": PROTOCOL, "service": SERVICE, "version": VERSION, "request_id": request_id, "status": envelope["status"], "decision": "EVIDENCE_EMITTED" if result["valid"] else "EVIDENCE_REJECTED", "reasons": result["errors"], "result": {"valid": result["valid"]}, "evidence": {"caios": envelope}}
     if operation == "verify-proof":
         proof = payload.get("proof")
         if not isinstance(proof, dict):
             return {"protocol": PROTOCOL, "service": SERVICE, "version": VERSION, "request_id": request_id, "status": "FAIL", "decision": "INVALID_INPUT", "reasons": ["proof must be an object"], "result": {}, "evidence": {}}
         result = verify_proof_data(proof)
-        return {"protocol": PROTOCOL, "service": SERVICE, "version": VERSION, "request_id": request_id, "status": "PASS" if result["valid"] else "FAIL", "decision": "VERIFIED" if result["valid"] else "REJECTED", "reasons": result["errors"], "result": result, "evidence": {"execution": "not performed"}}
+        return {"protocol": PROTOCOL, "service": SERVICE, "version": VERSION, "request_id": request_id, "status": "PASS" if result["valid"] else "FAIL", "decision": "VERIFIED" if result["valid"] else "REJECTED", "reasons": result["errors"], "result": result, "evidence": {"execution": "not performed", "caios": _evidence_envelope(request_id, proof, result)}}
     return {"protocol": PROTOCOL, "service": SERVICE, "version": VERSION, "request_id": request_id, "status": "FAIL", "decision": "INVALID_OPERATION", "reasons": [f"unsupported operation: {operation}"], "result": {}, "evidence": {}}
 
 class Handler(BaseHTTPRequestHandler):
@@ -93,7 +124,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/aethel/health":
             self._send(200, {"protocol": PROTOCOL, "service": SERVICE, "version": VERSION, "request_id": "health", "status": "PASS", "decision": "HEALTHY", "reasons": [], "result": {}, "evidence": {"execution_over_http": False}})
         elif self.path == "/aethel/capabilities":
-            self._send(200, {"protocol": PROTOCOL, "service": SERVICE, "version": VERSION, "operations": ["hash-text", "verify-proof"], "execution_over_http": False})
+            self._send(200, {"protocol": PROTOCOL, "service": SERVICE, "version": VERSION, "operations": ["hash-text", "verify-proof", "proof-evidence"], "execution_over_http": False})
         else:
             self._send(404, {"error": "not found"})
 
