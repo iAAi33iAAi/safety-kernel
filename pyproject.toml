@@ -7,7 +7,7 @@ name = "sk-cli"
 version = "0.1.0"
 description = "Tamper-evident execution evidence for scripts; records and verifies covered artifacts."
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "John David Taylor Preston"},
 ]
