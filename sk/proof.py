@@ -1,4 +1,4 @@
-"""Proof generation and integrity primitives."""
+"""Proof generation and strict JSON integrity primitives."""
 import hashlib
 import json
 import os
@@ -18,6 +18,35 @@ def hash_file(path: str) -> str:
     """SHA-256 hash of a file's contents."""
     with open(path, "rb") as f:
         return hash_bytes(f.read())
+
+
+def _reject_json_constant(value: str):
+    """Reject JavaScript-style non-standard numeric constants accepted by json.loads."""
+    raise ValueError(f"non-standard JSON constant is forbidden: {value}")
+
+
+def _reject_duplicate_object_keys(pairs):
+    """Reject duplicate keys so all consumers interpret the same object."""
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON object key: {key}")
+        result[key] = value
+    return result
+
+
+def strict_json_loads(text: str):
+    """Parse JSON while rejecting duplicate keys and NaN/Infinity extensions."""
+    return json.loads(
+        text,
+        parse_constant=_reject_json_constant,
+        object_pairs_hook=_reject_duplicate_object_keys,
+    )
+
+
+def canonical_proof_json(value: dict) -> str:
+    """Return the proof-seal serialization; non-finite numbers are not representable."""
+    return json.dumps(value, sort_keys=True, ensure_ascii=True, allow_nan=False)
 
 
 def capture_environment() -> dict:
@@ -61,10 +90,8 @@ def build_proof(
         "environment": capture_environment(),
     }
 
-    # Compute the proof seal — hash of everything above
-    canonical = json.dumps(proof, sort_keys=True, ensure_ascii=True)
-    proof["proof_hash"] = hash_bytes(canonical.encode("utf-8"))
-
+    # Keep the historical key ordering/spacing; reject non-finite values.
+    proof["proof_hash"] = hash_bytes(canonical_proof_json(proof).encode("utf-8"))
     return proof
 
 
@@ -75,11 +102,14 @@ def proof_filename(start_time: float, proof_id: str) -> str:
 
 
 def serialize_proof(proof: dict) -> str:
-    """Serialize proof to JSON."""
-    return json.dumps(proof, indent=2, sort_keys=False, ensure_ascii=True)
+    """Serialize proof JSON, rejecting NaN and Infinity rather than emitting invalid JSON."""
+    return json.dumps(proof, indent=2, sort_keys=False, ensure_ascii=True, allow_nan=False)
 
 
 def load_proof(path: str) -> dict:
-    """Load a proof from a JSON file."""
-    with open(path, "r") as f:
-        return json.load(f)
+    """Load one JSON proof object using strict duplicate-key/non-finite rejection."""
+    with open(path, "r", encoding="utf-8") as f:
+        value = strict_json_loads(f.read())
+    if not isinstance(value, dict):
+        raise ValueError("proof document must be a JSON object")
+    return value
