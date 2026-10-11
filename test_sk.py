@@ -340,6 +340,28 @@ def test_verify_missing_file():
     check("shows error", "not found" in r.stdout)
 
 
+def test_verify_rejects_ambiguous_json():
+    """Duplicate keys and NaN/Infinity must fail before proof verification."""
+    print("\\n=== TEST: Strict proof JSON ===")
+    tmpdir = tempfile.mkdtemp(prefix="sk_strict_json_")
+    try:
+        cases = [
+            ("duplicate.json", '{"proof_hash":"first","proof_hash":"second"}', "duplicate JSON object key"),
+            ("nan.json", '{"value": NaN}', "non-standard JSON constant"),
+            ("infinity.json", '{"value": Infinity}', "non-standard JSON constant"),
+        ]
+        for filename, raw, expected in cases:
+            path = os.path.join(tmpdir, filename)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(raw)
+            result = run_sk(["verify", path], cwd=tmpdir)
+            combined = result.stdout + result.stderr
+            check(f"{filename} exits 1", result.returncode == 1, combined)
+            check(f"{filename} rejected as ambiguous/non-standard", expected in combined, combined)
+    finally:
+        shutil.rmtree(tmpdir)
+
+
 def test_bash_script():
     """Test: .sh scripts run with bash."""
     print("\n=== TEST: Bash script ===")
@@ -381,6 +403,7 @@ if __name__ == "__main__":
     test_filename_uniqueness()
     test_verify_bad_json()
     test_verify_missing_file()
+    test_verify_rejects_ambiguous_json()
     test_bash_script()
 
     print()
