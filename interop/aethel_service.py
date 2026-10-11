@@ -13,6 +13,13 @@ import re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+import sys
+
+# Ensure direct execution as `python interop/aethel_service.py` can import
+# the repository-local proof package even when sys.path[0] is the interop folder.
+_REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPOSITORY_ROOT))
 
 from sk.proof import canonical_proof_json, strict_json_loads
 
