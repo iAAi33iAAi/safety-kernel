@@ -102,6 +102,7 @@ def verify_proof(path: str):
         "returncode", "stdout_hash", "stderr_hash", "timestamp_start",
         "timestamp_end", "duration_seconds", "proof_hash", "environment",
     ]
+    schema_errors_before = len(errors)
     missing = [field for field in required if field not in proof]
     if missing:
         errors.append(f"missing required fields: {', '.join(missing)}")
@@ -135,14 +136,7 @@ def verify_proof(path: str):
         if duration < 0:
             errors.append("duration_seconds must not be negative")
 
-    if not missing and not any(
-        message.startswith((
-            "proof_id must", "sk_version must", "returncode must",
-            "environment must", "timestamp_start must", "timestamp_end must",
-            "duration_seconds must", "timestamp_end must not", "duration_seconds must not",
-        ))
-        for message in errors
-    ):
+    if len(errors) == schema_errors_before:
         checks_passed += 1
 
     # Report.
