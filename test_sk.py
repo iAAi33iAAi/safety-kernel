@@ -342,7 +342,7 @@ def test_verify_missing_file():
 
 def test_verify_rejects_ambiguous_json():
     """Duplicate keys and NaN/Infinity must fail before proof verification."""
-    print("\\n=== TEST: Strict proof JSON ===")
+    print("\n=== TEST: Strict proof JSON ===")
     tmpdir = tempfile.mkdtemp(prefix="sk_strict_json_")
     try:
         cases = [
