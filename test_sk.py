@@ -247,6 +247,42 @@ def test_script_missing_on_verify():
         shutil.rmtree(tmpdir)
 
 
+def test_verify_rejects_malformed_script_hash_when_source_missing():
+    """A missing script may skip comparison, but never permits a malformed digest."""
+    print("\\n=== TEST: Malformed script digest ===")
+    tmpdir = tempfile.mkdtemp(prefix="sk_script_hash_")
+    try:
+        script = os.path.join(tmpdir, "source.py")
+        with open(script, "w", encoding="utf-8") as f:
+            f.write('print("proof")\\n')
+
+        run_result = run_sk(["run", script], cwd=tmpdir)
+        proofs = [name for name in os.listdir(tmpdir) if name.startswith("proof_") and name.endswith(".json")]
+        check("proof generated", run_result.returncode == 0 and len(proofs) == 1)
+        if not proofs:
+            return
+
+        proof_path = os.path.join(tmpdir, proofs[0])
+        with open(proof_path, "r", encoding="utf-8") as f:
+            proof = json.load(f)
+        proof["script"] = os.path.join(tmpdir, "source-no-longer-present.py")
+        proof["script_hash"] = "not-a-sha256"
+        seal_material = dict(proof)
+        seal_material.pop("proof_hash", None)
+        proof["proof_hash"] = hashlib.sha256(
+            json.dumps(seal_material, sort_keys=True, ensure_ascii=True, allow_nan=False).encode("utf-8")
+        ).hexdigest()
+        with open(proof_path, "w", encoding="utf-8") as f:
+            json.dump(proof, f, indent=2, allow_nan=False)
+
+        result = run_sk(["verify", proof_path], cwd=tmpdir)
+        combined = result.stdout + result.stderr
+        check("malformed digest fails verification", result.returncode == 1, combined)
+        check("reports malformed script_hash", "script_hash must be 64 lowercase hexadecimal characters" in combined, combined)
+    finally:
+        shutil.rmtree(tmpdir)
+
+
 def test_failing_script():
     """Test: sk run captures nonzero exit code correctly."""
     print("\n=== TEST: Failing script ===")
@@ -340,6 +376,28 @@ def test_verify_missing_file():
     check("shows error", "not found" in r.stdout)
 
 
+def test_verify_rejects_ambiguous_json():
+    """Duplicate keys and NaN/Infinity must fail before proof verification."""
+    print("\n=== TEST: Strict proof JSON ===")
+    tmpdir = tempfile.mkdtemp(prefix="sk_strict_json_")
+    try:
+        cases = [
+            ("duplicate.json", '{"proof_hash":"first","proof_hash":"second"}', "duplicate JSON object key"),
+            ("nan.json", '{"value": NaN}', "non-standard JSON constant"),
+            ("infinity.json", '{"value": Infinity}', "non-standard JSON constant"),
+        ]
+        for filename, raw, expected in cases:
+            path = os.path.join(tmpdir, filename)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(raw)
+            result = run_sk(["verify", path], cwd=tmpdir)
+            combined = result.stdout + result.stderr
+            check(f"{filename} exits 1", result.returncode == 1, combined)
+            check(f"{filename} rejected as ambiguous/non-standard", expected in combined, combined)
+    finally:
+        shutil.rmtree(tmpdir)
+
+
 def test_bash_script():
     """Test: .sh scripts run with bash."""
     print("\n=== TEST: Bash script ===")
@@ -376,11 +434,13 @@ if __name__ == "__main__":
     test_tamper_script()
     test_missing_field()
     test_script_missing_on_verify()
+    test_verify_rejects_malformed_script_hash_when_source_missing()
     test_failing_script()
     test_stderr_capture()
     test_filename_uniqueness()
     test_verify_bad_json()
     test_verify_missing_file()
+    test_verify_rejects_ambiguous_json()
     test_bash_script()
 
     print()
