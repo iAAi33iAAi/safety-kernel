@@ -78,9 +78,9 @@ def verify_proof(path: str):
     expected_script_hash = proof.get("script_hash", "")
     if not isinstance(script_path, str):
         errors.append("script must be a string")
-    elif not _is_sha256_hex(expected_script_hash):
+    if not _is_sha256_hex(expected_script_hash):
         errors.append("script_hash must be 64 lowercase hexadecimal characters")
-    elif os.path.isfile(script_path):
+    if isinstance(script_path, str) and _is_sha256_hex(expected_script_hash) and os.path.isfile(script_path):
         checks_total += 1
         try:
             actual_script_hash = hash_file(script_path)
